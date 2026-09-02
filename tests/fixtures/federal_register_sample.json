@@ -1,0 +1,45 @@
+{
+  "count": 4,
+  "total_pages": 1,
+  "results": [
+    {
+      "document_number": "2026-14822",
+      "title": "Certain Frozen Warmwater Shrimp From India: Final Results of Antidumping Duty Administrative Review",
+      "abstract": "The Department of Commerce determines that producers and exporters of certain frozen warmwater shrimp from India sold subject merchandise at less than normal value during the period of review.",
+      "html_url": "https://www.federalregister.gov/documents/2026/07/28/2026-14822/shrimp-india",
+      "publication_date": "2026-07-28",
+      "type": "Notice",
+      "agencies": [
+        {"raw_name": "INTERNATIONAL TRADE ADMINISTRATION", "name": "International Trade Administration"},
+        {"raw_name": "DEPARTMENT OF COMMERCE", "name": "Commerce Department"}
+      ]
+    },
+    {
+      "document_number": "2026-14901",
+      "title": "Implementation of Additional Export Control Measures for Advanced Semiconductor Manufacturing Equipment",
+      "abstract": "This rule amends the Export Administration Regulations to address supply chain risks associated with advanced semiconductor manufacturing equipment and adds entities to the entity list.",
+      "html_url": "https://www.federalregister.gov/documents/2026/07/28/2026-14901/export-controls",
+      "publication_date": "2026-07-28",
+      "type": "Rule",
+      "agencies": [
+        {"name": "Industry and Security Bureau"}
+      ]
+    },
+    {
+      "document_number": "2026-14933",
+      "title": "Agency Information Collection Activities; Submission for OMB Review; Comment Request",
+      "abstract": "The Department of Commerce will submit an information collection request to the Office of Management and Budget for clearance in accordance with the Paperwork Reduction Act.",
+      "html_url": "https://www.federalregister.gov/documents/2026/07/29/2026-14933/paperwork",
+      "publication_date": "2026-07-29",
+      "type": "Notice",
+      "agencies": ["Commerce Department"]
+    },
+    {
+      "title": "Record with no document number and an unparseable date",
+      "html_url": "https://www.federalregister.gov/documents/broken",
+      "publication_date": "not-a-date",
+      "type": "Notice",
+      "agencies": []
+    }
+  ]
+}
