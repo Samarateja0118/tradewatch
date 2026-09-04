@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-ssr/
+coverage/
+
+# Local overrides
+.env
+.env.local
+*.local
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

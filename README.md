@@ -125,3 +125,90 @@ Run once manually with `--verbose` before scheduling anything.
   evaluation set to measure precision/recall against the current approach
 - Entity extraction for company and HTS-code level tracking
 - Email delivery, or a FastAPI read layer with a small frontend
+
+## Dashboard
+
+A read-only web dashboard sits over the same SQLite file the pipeline writes.
+
+```
+pipeline (unchanged)  ->  SQLite  ->  read API (FastAPI)  ->  frontend (React + TS)
+```
+
+Three layers with a seam between each, and the seams are the point. The
+pipeline is untouched — the dashboard is a reader of a system it does not own.
+The API turns rows into JSON and holds no business logic: no thresholds, no
+scoring, no reclassification. The frontend formats for display and computes
+nothing the API could have sent.
+
+The rule that keeps it that way: if something wants computing in the frontend
+it probably belongs in the API, and if it wants computing in the API it
+probably belongs in the pipeline.
+
+### API
+
+```
+GET /api/documents?category=<slug>&limit=50&offset=0   -> { items, total }
+GET /api/documents/{id}                                 -> full briefing
+GET /api/categories                                     -> [{ slug, label, count }]
+```
+
+A list carries metadata and the briefing headline; the note itself only comes
+back from the detail endpoint. List views do not render the body, and shipping
+it would multiply the payload for text nobody reads until they click.
+
+Two properties worth naming. The connection opens in SQLite's **read-only
+mode**, so the dashboard cannot write to the pipeline's database even by
+accident — a test asserts the write fails. And documents the prefilter rejected
+stay invisible: the table holds them, but showing them would put
+work-in-progress in front of a reader expecting findings.
+
+**There is no `confidence` field.** The relevance score is computed during
+classification and never persisted, so the API cannot report it without the
+pipeline changing. `significance` (1-5) is what is stored, and what orders a
+list.
+
+### Running it
+
+```bash
+pip install -r requirements.txt
+python -m scripts.seed_demo          # offline sample data, no API key needed
+uvicorn api.app:app --reload         # :8000
+
+cd frontend && npm install && npm run dev   # :5173
+```
+
+`scripts/seed_demo.py` exists because the real database is produced by a run and
+is gitignored — a fresh clone would otherwise have an empty dashboard. It writes
+through `Store`, so its rows have the shape a real run produces.
+
+Frontend configuration is one variable, `VITE_API_URL`, so local and deployed
+differ by environment rather than by code. The API's `TRADEWATCH_ALLOWED_ORIGINS`
+has to name the deployed frontend or the browser will refuse the response.
+
+### Frontend
+
+Two pieces of state live in `App` — the selected category and the selected
+document id — because each is set by one component and read by a sibling that
+cannot see it. Everything below is presentational and takes props. There is no
+Redux or Zustand: nothing is shared across distant branches, and a store would
+add indirection without removing any.
+
+Data fetching is `useEffect` + `fetch` behind a hook returning
+`{ data, loading, error }`, all three always present, so a consumer that forgets
+a state has an obviously missing branch rather than a blank screen. TanStack
+Query would be defensible, but its benefits — dedup, caching,
+stale-while-revalidate — answer problems three read-only endpoints do not have.
+
+Errors are normalised in `api/client.ts`, so no component ever sees a raw fetch
+rejection: a dropped connection, a 404 and a 500 all arrive as a typed `ApiError`
+with a `kind` the UI switches on. Same instinct as the retries and circuit
+breaking in the pipeline's HTTP layer, one level up.
+
+Tests mock the API client rather than `fetch`, which keeps them tied to the
+contract instead of the transport — the same reason the pipeline's tests use a
+deterministic fake LLM client.
+
+```bash
+cd frontend && npm test        # component and state tests
+pytest tests/test_api.py       # the API against a database Store wrote
+```
