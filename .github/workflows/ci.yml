@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Two runtimes, two jobs, run in parallel. Splitting them means a red badge
+# names which half broke without anyone opening the log, and neither waits on
+# the other's install.
+jobs:
+  api:
+    name: Pipeline and API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      # No ANTHROPIC_API_KEY. The pipeline tests use a deterministic fake
+      # client and the API tests build their own database through Store, so a
+      # run costs nothing and cannot be flaky on someone else's uptime.
+      - run: pytest -q
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Building is a test of its own: tsc passing does not prove the bundle
+      # resolves, and a broken build is only discovered at deploy otherwise.
+      - run: npm run build
+
+  # Guards the deployment decision rather than the code. The snapshot is what
+  # makes the image self-contained, so it failing to load is a deploy that
+  # serves an empty dashboard — cheaper to catch here.
+  snapshot:
+    name: Shipped snapshot loads
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: The committed snapshot is present and readable
+        run: |
+          test -f data/snapshot.db || { echo "data/snapshot.db is missing — .gitignore may be re-ignoring it"; exit 1; }
+          python - <<'PY'
+          from api import queries
+          conn = queries.connect("data/snapshot.db")
+          page = queries.list_documents(conn, limit=200)
+          categories = queries.list_categories(conn)
+          assert page.total > 0, "snapshot holds no briefings"
+          assert categories, "snapshot holds no categories"
+          print(f"snapshot OK: {page.total} briefings across {len(categories)} categories")
+          PY
