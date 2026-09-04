@@ -46,7 +46,9 @@ async function request<T>(path: string, params?: Record<string, string | number 
 }
 
 export const api = {
-  listDocuments: (params: { category?: string; limit?: number; offset?: number } = {}) =>
+  listDocuments: (
+    params: { category?: string; min_significance?: number; limit?: number; offset?: number } = {},
+  ) =>
     request<DocumentPage>("/api/documents", params),
 
   getDocument: (id: string) => request<DocumentDetail>(`/api/documents/${encodeURIComponent(id)}`),

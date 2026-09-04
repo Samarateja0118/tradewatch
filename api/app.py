@@ -6,9 +6,10 @@ document *means*. That judgement already happened upstream; repeating any of
 it would give the dashboard a second opinion that could disagree with the
 digest it is supposed to be showing.
 
-The database path comes from `TRADEWATCH_DB`, defaulting to the same
-`./tradewatch.db` the CLI writes, so running the pipeline and then the API in
-one directory needs no configuration at all.
+The database path comes from `TRADEWATCH_DB`. It falls back to the pipeline's
+own `./tradewatch.db` when one exists — so running a pipeline and then the API
+in one directory needs no configuration — and otherwise to the checked-in
+snapshot, which is what a fresh clone and the deployed image both use.
 """
 
 from __future__ import annotations
@@ -24,7 +25,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import queries
 from .models import CategoryCount, DocumentDetail, DocumentPage
 
-DB_PATH = Path(os.getenv("TRADEWATCH_DB", "./tradewatch.db"))
+def _default_db() -> Path:
+    """A live run's database if there is one, else the snapshot that ships with the repo.
+
+    Preferring the live file means a developer who has just run the pipeline
+    sees their own data without setting anything; falling back to the snapshot
+    means a fresh clone is never staring at an empty dashboard.
+    """
+    live = Path("./tradewatch.db")
+    return live if live.exists() else Path("./data/snapshot.db")
+
+
+DB_PATH = Path(os.getenv("TRADEWATCH_DB")) if os.getenv("TRADEWATCH_DB") else _default_db()
 
 # A browser calling this from another origin is the normal case here: the
 # frontend deploys to Vercel and the API somewhere else. Restricted to an
@@ -48,7 +60,8 @@ async def lifespan(app: FastAPI):
         # Failing at startup with the path in the message beats every request
         # returning an opaque 500 until someone thinks to check the volume.
         raise RuntimeError(
-            f"No database at {DB_PATH.resolve()}. Run the pipeline first, or set TRADEWATCH_DB."
+            f"No database at {DB_PATH.resolve()}. Run the pipeline, seed a snapshot "
+            f"with `python -m scripts.seed_demo --db data/snapshot.db`, or set TRADEWATCH_DB."
         )
     app.state.db = queries.connect(DB_PATH)
     try:
@@ -89,11 +102,23 @@ def get_categories(conn: sqlite3.Connection = Depends(db)) -> list[CategoryCount
 @app.get("/api/documents", response_model=DocumentPage)
 def get_documents(
     category: str | None = Query(default=None, description="Category slug to filter by."),
+    min_significance: int | None = Query(
+        default=None,
+        ge=1,
+        le=5,
+        description="Only briefings rated at least this significant (1-5). A floor, not an exact match.",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     conn: sqlite3.Connection = Depends(db),
 ) -> DocumentPage:
-    return queries.list_documents(conn, category=category, limit=limit, offset=offset)
+    return queries.list_documents(
+        conn,
+        category=category,
+        min_significance=min_significance,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @app.get("/api/documents/{document_id}", response_model=DocumentDetail)

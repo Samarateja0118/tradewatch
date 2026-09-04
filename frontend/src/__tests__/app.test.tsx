@@ -26,6 +26,7 @@ import App from "../App";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { DocumentCard } from "../components/DocumentCard";
 import { DocumentList } from "../components/DocumentList";
+import { SignificanceFilter } from "../components/SignificanceFilter";
 
 const mocked = vi.mocked(api);
 
@@ -120,7 +121,62 @@ describe("the list's non-happy paths", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Tariff/ }));
 
     await waitFor(() =>
-      expect(mocked.listDocuments).toHaveBeenLastCalledWith({ category: "tariff" }),
+      expect(mocked.listDocuments).toHaveBeenLastCalledWith({
+        category: "tariff",
+        min_significance: undefined,
+      }),
+    );
+  });
+});
+
+
+describe("SignificanceFilter", () => {
+  it("reports the floor that was clicked", async () => {
+    const onSelect = vi.fn();
+    render(<SignificanceFilter selected={null} onSelect={onSelect} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "4+" }));
+
+    expect(onSelect).toHaveBeenCalledWith(4);
+  });
+
+  it("reports null for Any, so the caller can clear the floor", async () => {
+    const onSelect = vi.fn();
+    render(<SignificanceFilter selected={4} onSelect={onSelect} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Any" }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it("sends the floor to the API rather than filtering the page in the browser", async () => {
+    render(<App />);
+    await screen.findByText("Steel duty review");
+
+    await userEvent.click(screen.getByRole("button", { name: "4+" }));
+
+    // Filtering client-side would narrow one page instead of the result set —
+    // indistinguishable on seven documents, wrong on seven hundred.
+    await waitFor(() =>
+      expect(mocked.listDocuments).toHaveBeenLastCalledWith({
+        category: undefined,
+        min_significance: 4,
+      }),
+    );
+  });
+
+  it("composes with the category filter", async () => {
+    render(<App />);
+    await screen.findByText("Steel duty review");
+
+    await userEvent.click(screen.getByRole("button", { name: /Tariff/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Only 5" }));
+
+    await waitFor(() =>
+      expect(mocked.listDocuments).toHaveBeenLastCalledWith({
+        category: "tariff",
+        min_significance: 5,
+      }),
     );
   });
 });

@@ -31,9 +31,13 @@ htmlcov/
 .vscode/
 .idea/
 .DS_Store
-.venv/
-__pycache__/
-*.pyc
-*.db
-briefs/
-run.log
+
+# The shipped snapshot, re-included last so nothing above can re-ignore it —
+# a negation only wins if no later rule matches the path again, and *.db is
+# stated twice in most gitignores that grow organically.
+#
+# It is checked in because nothing writes to it at runtime. A read-only
+# database is not state; it is a static asset that happens to be in SQLite
+# format, and shipping it inside the image is what makes ephemeral disk
+# irrelevant.
+!data/snapshot.db

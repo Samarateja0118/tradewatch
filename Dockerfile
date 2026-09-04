@@ -13,10 +13,15 @@ COPY tradewatch/ ./tradewatch/
 COPY api/ ./api/
 COPY scripts/ ./scripts/
 
-# The database is a mounted volume in production, not baked in. TRADEWATCH_DB
-# points at it; TRADEWATCH_ALLOWED_ORIGINS must name the deployed frontend, or
-# the browser will refuse the response.
-ENV TRADEWATCH_DB=/data/tradewatch.db \
+# The data ships inside the image. Nothing writes to it at runtime, so it needs
+# no volume and survives no redeploy — because it is rebuilt from the repo every
+# time. That is what makes a free tier with ephemeral disk a correct host rather
+# than a compromise.
+COPY data/snapshot.db ./data/snapshot.db
+
+# TRADEWATCH_ALLOWED_ORIGINS must name the deployed frontend, or the browser
+# will refuse the response even though the API answered.
+ENV TRADEWATCH_DB=/app/data/snapshot.db \
     TRADEWATCH_ALLOWED_ORIGINS=http://localhost:5173 \
     PORT=8000
 

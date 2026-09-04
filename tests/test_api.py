@@ -149,3 +149,32 @@ def test_the_api_cannot_write_to_the_pipelines_database(client):
 
     with pytest.raises(sqlite3.OperationalError):
         client.app.state.db.execute("DELETE FROM briefings")
+
+
+def test_filters_on_a_significance_floor_not_an_exact_match(client):
+    """Asking for 3+ must not hide the 4s and 5s above it."""
+    body = client.get("/api/documents", params={"min_significance": 3}).json()
+
+    assert body["total"] == 3
+    assert sorted(item["significance"] for item in body["items"]) == [3, 4, 5]
+
+
+def test_significance_and_category_filters_compose(client):
+    body = client.get(
+        "/api/documents", params={"category": "ad_cvd", "min_significance": 3}
+    ).json()
+
+    assert body["total"] == 1
+    assert body["items"][0]["significance"] == 5
+
+
+def test_significance_is_the_default_order(client):
+    items = client.get("/api/documents").json()["items"]
+
+    assert [i["significance"] for i in items] == sorted(
+        (i["significance"] for i in items), reverse=True
+    )
+
+
+def test_significance_outside_one_to_five_is_rejected(client):
+    assert client.get("/api/documents", params={"min_significance": 9}).status_code == 422

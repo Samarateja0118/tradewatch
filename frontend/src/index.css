@@ -52,3 +52,5 @@ body {
 
 .state { color: var(--muted); padding: 20px; border: 1px dashed var(--line); border-radius: 10px; text-align: center; }
 .state--error { color: #fca5a5; border-color: #7f1d1d; }
+.filter--sig { align-items: center; margin-top: -8px; }
+.filter__label { font-size: 12px; color: var(--muted); margin-right: 4px; }

@@ -94,17 +94,29 @@ def list_documents(
     conn: sqlite3.Connection,
     *,
     category: str | None = None,
+    min_significance: int | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> DocumentPage:
     """A page of briefed documents, most significant first.
 
     Ordering matches the digest's: significance descending, then publication
-    date. A reader opening the dashboard should meet the same top item the
-    briefing would have led with.
+    date, then title so equal rows do not shuffle between requests. A reader
+    opening the dashboard meets the same top item the briefing led with.
+
+    `min_significance` is a floor, not an equality match. "Show me anything that
+    matters" is the question a reader actually has; "show me exactly the 3s" is
+    not, and an exact filter would hide the 5s from someone asking for 3.
     """
-    where = "WHERE b.category = ?" if category else ""
-    params: list[object] = [category] if category else []
+    clauses: list[str] = []
+    params: list[object] = []
+    if category:
+        clauses.append("b.category = ?")
+        params.append(category)
+    if min_significance is not None:
+        clauses.append("b.significance >= ?")
+        params.append(min_significance)
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 
     total = conn.execute(
         f"""

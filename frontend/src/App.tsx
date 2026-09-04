@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CategoryFilter } from "./components/CategoryFilter";
+import { SignificanceFilter } from "./components/SignificanceFilter";
 import { DocumentDetail } from "./components/DocumentDetail";
 import { DocumentList } from "./components/DocumentList";
 import { Empty } from "./components/states/Empty";
@@ -10,11 +11,11 @@ import { useDocument } from "./hooks/useDocument";
 import { useDocuments } from "./hooks/useDocuments";
 
 /**
- * Two pieces of state live here — the selected category and the selected
- * document id — because both are read by siblings that cannot see each other:
- * the filter sets the category the list reads, and the list sets the id the
+ * Three pieces of state live here — the two filters and the selected document
+ * id — because each is set by one component and read by a sibling that cannot
+ * see it: the filters set what the list requests, and the list sets the id the
  * detail panel reads. The nearest common parent is the right home for exactly
- * those two, and nothing else needs lifting.
+ * those three, and nothing else needs lifting.
  *
  * No Redux, no Zustand. A store would add indirection without removing any:
  * there is no state shared across distant branches, no cross-cutting update,
@@ -22,10 +23,11 @@ import { useDocuments } from "./hooks/useDocuments";
  */
 export default function App() {
   const [category, setCategory] = useState<string | null>(null);
+  const [minSignificance, setMinSignificance] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const categories = useCategories();
-  const documents = useDocuments(category);
+  const documents = useDocuments(category, minSignificance);
   const detail = useDocument(selectedId);
 
   return (
@@ -49,6 +51,14 @@ export default function App() {
           }}
         />
       )}
+
+      <SignificanceFilter
+        selected={minSignificance}
+        onSelect={(value) => {
+          setMinSignificance(value);
+          setSelectedId(null);
+        }}
+      />
 
       <main className="app__body">
         <section className="app__list" aria-label="Briefings">

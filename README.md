@@ -147,10 +147,18 @@ probably belongs in the pipeline.
 ### API
 
 ```
-GET /api/documents?category=<slug>&limit=50&offset=0   -> { items, total }
+GET /api/documents?category=<slug>&min_significance=<1-5>&limit=50&offset=0
+                                                        -> { items, total }
 GET /api/documents/{id}                                 -> full briefing
 GET /api/categories                                     -> [{ slug, label, count }]
 ```
+
+Results are ordered by significance descending, matching the digest's own
+ordering — a briefing tool should open on the most consequential thing, and that
+is a product decision rather than a property of the column. `min_significance`
+is a **floor, not an equality match**: "show me anything that matters" is the
+question a reader has, and an exact filter would hide the 5s from someone asking
+for 3.
 
 A list carries metadata and the briefing headline; the note itself only comes
 back from the detail endpoint. List views do not render the body, and shipping
@@ -158,28 +166,61 @@ it would multiply the payload for text nobody reads until they click.
 
 Two properties worth naming. The connection opens in SQLite's **read-only
 mode**, so the dashboard cannot write to the pipeline's database even by
-accident — a test asserts the write fails. And documents the prefilter rejected
-stay invisible: the table holds them, but showing them would put
-work-in-progress in front of a reader expecting findings.
+accident — and a test asserts that `DELETE` raises rather than trusting the
+comment above it. That is the same instinct as the `break-guardrails` harness in
+[access-ai-gateway](https://github.com/Samarateja0118/access-ai-gateway), which
+switches each defence off and records what gets through: a claim about a safety
+property is worth what its demonstration is worth, and both projects would
+rather run the failure than describe it.
+
+And documents the prefilter rejected stay invisible: the table holds them, but
+showing them would put work-in-progress in front of a reader expecting findings.
 
 **There is no `confidence` field.** The relevance score is computed during
 classification and never persisted, so the API cannot report it without the
 pipeline changing. `significance` (1-5) is what is stored, and what orders a
 list.
 
+### Deployment
+
+The API ships its own data. Nothing writes to the database at runtime, which
+means it is not state — it is a **static asset that happens to be in SQLite
+format**, and `data/snapshot.db` is committed and copied into the image.
+
+That collapses the usual problem. No persistent volume, no scheduled job, no
+`ANTHROPIC_API_KEY` at runtime, and ephemeral disk stops mattering because the
+data is rebuilt from the repo on every deploy. Any free tier that takes a
+Dockerfile will do.
+
+It also keeps the three-layer architecture intact. Exporting static JSON and
+serving the frontend alone would ship the same pixels, but it would throw away
+the layer where the read-only enforcement and the contract decisions live —
+which is the part worth showing.
+
+*Future work:* a scheduled GitHub Action could run the pipeline weekly with the
+key in secrets, commit the refreshed snapshot, and trigger a redeploy. That
+buys freshness without giving the runtime any state to keep.
+
 ### Running it
 
 ```bash
 pip install -r requirements.txt
-python -m scripts.seed_demo          # offline sample data, no API key needed
-uvicorn api.app:app --reload         # :8000
+uvicorn api.app:app --reload         # :8000, serves data/snapshot.db out of the box
 
 cd frontend && npm install && npm run dev   # :5173
 ```
 
-`scripts/seed_demo.py` exists because the real database is produced by a run and
-is gitignored — a fresh clone would otherwise have an empty dashboard. It writes
-through `Store`, so its rows have the shape a real run produces.
+A fresh clone needs no setup: the API falls back to the committed snapshot, and
+prefers `./tradewatch.db` when a real run has produced one, so a developer who
+has just run the pipeline sees their own data without configuring anything.
+
+`scripts/seed_demo.py` regenerates the snapshot offline, deterministically, with
+no API key. It writes through `Store`, so its rows have the shape a real run
+produces rather than one that merely looks similar.
+
+```bash
+python -m scripts.seed_demo --db data/snapshot.db   # rebuild the shipped snapshot
+```
 
 Frontend configuration is one variable, `VITE_API_URL`, so local and deployed
 differ by environment rather than by code. The API's `TRADEWATCH_ALLOWED_ORIGINS`
@@ -187,9 +228,9 @@ has to name the deployed frontend or the browser will refuse the response.
 
 ### Frontend
 
-Two pieces of state live in `App` — the selected category and the selected
-document id — because each is set by one component and read by a sibling that
-cannot see it. Everything below is presentational and takes props. There is no
+Three pieces of state live in `App` — the two filters and the selected document
+id — because each is set by one component and read by a sibling that cannot see
+it. Everything below is presentational and takes props. There is no
 Redux or Zustand: nothing is shared across distant branches, and a store would
 add indirection without removing any.
 
@@ -203,6 +244,10 @@ Errors are normalised in `api/client.ts`, so no component ever sees a raw fetch
 rejection: a dropped connection, a 404 and a 500 all arrive as a typed `ApiError`
 with a `kind` the UI switches on. Same instinct as the retries and circuit
 breaking in the pipeline's HTTP layer, one level up.
+
+Both filters are applied server-side. Filtering the fetched array in the browser
+would narrow one page rather than the result set — indistinguishable on seven
+documents and wrong on seven hundred.
 
 Tests mock the API client rather than `fetch`, which keeps them tied to the
 contract instead of the transport — the same reason the pipeline's tests use a
