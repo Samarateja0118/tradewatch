@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CategoryFilter } from "./components/CategoryFilter";
 import { SignificanceFilter } from "./components/SignificanceFilter";
+import { StatBar } from "./components/StatBar";
 import { DocumentDetail } from "./components/DocumentDetail";
 import { DocumentList } from "./components/DocumentList";
 import { Empty } from "./components/states/Empty";
@@ -33,8 +34,12 @@ export default function App() {
   return (
     <div className="app">
       <header className="app__head">
-        <h1>TradeWatch</h1>
-        <p>India–US trade &amp; technology policy, briefed daily.</p>
+        <h1>
+          Trade<span className="app__head-accent">Watch</span>
+        </h1>
+        <p>
+          India–US trade &amp; technology policy, read daily and briefed by significance.
+        </p>
       </header>
 
       {categories.loading && <Loading label="Loading categories" />}
@@ -59,6 +64,14 @@ export default function App() {
           setSelectedId(null);
         }}
       />
+
+      {documents.data && categories.data && (
+        <StatBar
+          documents={documents.data.items}
+          categories={categories.data}
+          total={documents.data.total}
+        />
+      )}
 
       <main className="app__body">
         <section className="app__list" aria-label="Briefings">

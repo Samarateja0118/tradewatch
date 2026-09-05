@@ -1,4 +1,5 @@
 import type { DocumentSummary } from "../api/types";
+import { SignificanceMeter } from "./SignificanceMeter";
 
 /** Formatting only — no computation the API could have done. */
 function formatDate(iso: string): string {
@@ -23,14 +24,7 @@ export function DocumentCard({
       <button type="button" className="card__hit" onClick={() => onSelect(document.id)}>
         <header className="card__head">
           <span className="card__cat">{document.category_label}</span>
-          <span
-            className="card__sig"
-            title={`Significance ${document.significance} of 5`}
-            aria-label={`Significance ${document.significance} of 5`}
-          >
-            {"●".repeat(document.significance)}
-            <span className="card__sig--off">{"●".repeat(5 - document.significance)}</span>
-          </span>
+          <SignificanceMeter value={document.significance} />
         </header>
 
         <h3 className="card__title">{document.title}</h3>
