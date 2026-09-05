@@ -1,0 +1,19 @@
+# Render blueprint. Point Render at this repo and it reads this file — no
+# console clicking, and the deployment configuration is reviewable in git.
+#
+# Note what is not here: no disk, no database add-on, no ANTHROPIC_API_KEY. The
+# briefings ship inside the image because nothing writes to them at runtime, so
+# the free tier's ephemeral filesystem is not a constraint to work around.
+services:
+  - type: web
+    name: tradewatch-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      # Set to the deployed frontend's origin. Not committed, because it is a
+      # different value per environment and wrong values fail silently in the
+      # browser rather than at startup.
+      - key: TRADEWATCH_ALLOWED_ORIGINS
+        sync: false
