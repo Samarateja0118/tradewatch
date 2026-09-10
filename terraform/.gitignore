@@ -1,0 +1,12 @@
+# State never belongs in git: it contains resource metadata and, for some
+# providers, secrets in plaintext. Remote state is configured for exactly this.
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl.bak
+crash.log
+
+# Per-person configuration
+backend.hcl
+terraform.tfvars
+*.auto.tfvars

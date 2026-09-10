@@ -6,6 +6,10 @@ pydantic>=2.7
 fastapi>=0.115
 uvicorn[standard]>=0.30
 
+# AWS Lambda deployment (Dockerfile.lambda only; the uvicorn image needs neither)
+mangum>=0.19
+boto3>=1.35
+
 # Tests
 pytest>=8.0
 pytest-asyncio>=0.23

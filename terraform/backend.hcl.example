@@ -1,0 +1,7 @@
+# Copy to backend.hcl (gitignored) and fill in, then:
+#   terraform init -backend-config=backend.hcl
+#
+# These live outside main.tf because a backend block cannot interpolate
+# variables — Terraform reads it before evaluating any expression.
+bucket = "REPLACE-tradewatch-tfstate-<your-suffix>"
+region = "us-east-1"

@@ -1,0 +1,6 @@
+# Local state, deliberately — see the comment at the top of main.tf.
+# Still never committed: it records account and bucket identifiers.
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars

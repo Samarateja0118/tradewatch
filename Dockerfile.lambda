@@ -1,0 +1,25 @@
+# The API as a Lambda container image.
+#
+# Separate from ./Dockerfile rather than replacing it: that one runs uvicorn and
+# is what any normal container host wants. This one has no server in it at all —
+# Lambda's runtime interface client is the server, and Mangum translates its
+# events into ASGI scope. Keeping both means the project is not locked to AWS,
+# and `docker run -p 8000:8000 tradewatch` still works for local checks.
+FROM public.ecr.aws/lambda/python:3.12
+
+# boto3 ships in the base image, but pinning it here means the image is
+# reproducible instead of inheriting whatever version the base was rebuilt with.
+RUN pip install --no-cache-dir \
+    fastapi \
+    pydantic \
+    mangum \
+    boto3
+
+COPY tradewatch/ ${LAMBDA_TASK_ROOT}/tradewatch/
+COPY api/ ${LAMBDA_TASK_ROOT}/api/
+
+# No COPY of data/snapshot.db. That is the point of the S3 bucket: the image
+# carries code, the bucket carries data, and refreshing the data does not
+# rebuild the image.
+
+CMD ["api.lambda_handler.handler"]

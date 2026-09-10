@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars and fill in.
+snapshot_bucket_name = "REPLACE-tradewatch-snapshot-<your-suffix>"
+allowed_origins      = ["https://your-frontend.vercel.app", "http://localhost:5173"]
+image_tag            = "latest"
