@@ -1,6 +1,7 @@
 # TradeWatch
 
 [![CI](https://github.com/Samarateja0118/tradewatch/actions/workflows/ci.yml/badge.svg)](https://github.com/Samarateja0118/tradewatch/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/live-demo-ff7a59)](https://tradewatch-hazel.vercel.app)
 
 An autonomous agent that monitors US government publications for developments
 affecting India–US trade and technology relations, and produces a daily
